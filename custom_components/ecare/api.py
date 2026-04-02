@@ -169,6 +169,7 @@ class EcareAuthClient:
         if TWO_FACTOR_PATH in location:
             _LOGGER.debug("SMS vereist — GET TwoFactorAuthenticate om SMS te triggeren: %s", location)
             async with s.get(location, allow_redirects=True) as r:
+                await r.text()
                 sms_url_actual = str(r.url)
             _LOGGER.debug("SMS zou nu verstuurd moeten zijn naar het geregistreerde nummer")
             return {"status": "need_sms", "sms_url": sms_url_actual, "cookies": self._export_cookies()}
