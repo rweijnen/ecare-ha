@@ -2,5 +2,7 @@
   "name": "eCare Dossier Monitor",
   "render_readme": true,
   "homeassistant": "2023.1.0",
-  "hacs": "2.0.0"
+  "hacs": "2.0.0",
+  "zip_release": true,
+  "filename": "ecare.zip"
 }
