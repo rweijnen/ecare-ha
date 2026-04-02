@@ -25,6 +25,11 @@ Deze integratie pollt de achterliggende API en maakt alle relevante data beschik
 
 ## Installatie via HACS
 
+Klik op de knop om de repository direct toe te voegen:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rweijnen&repository=ecare-ha&category=integration)
+
+Of handmatig:
 1. Ga naar HACS → Integraties → ⋮ → **Aangepaste opslagplaatsen**
 2. Voeg toe: `https://github.com/rweijnen/ecare-ha` als type **Integratie**
 3. Zoek op "eCare" en installeer
