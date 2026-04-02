@@ -1,25 +1,21 @@
 # eCare Dossier Monitor
 
-> ⚠️ **STATUS: EXPERIMENTEEL / WORK IN PROGRESS**
->
-> Deze integratie is in actieve ontwikkeling en nog niet productie-gereed.
-> Gebruik op eigen risico. API-koppeling is gebaseerd op reverse engineering
-> van het Puur van Jou portaal en kan zonder aankondiging breken.
-
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 ![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)
-![Status](https://img.shields.io/badge/Status-Experimenteel-orange)
+![Status](https://img.shields.io/badge/Status-Werkend-green)
 
-Home Assistant integratie die het eCare zorgdossier (Puur van Jou / wijkzorg) monitort
-en een melding stuurt via Telegram (of andere HA notificaties) wanneer er een nieuw item
-verschijnt in het dagboek.
+Home Assistant integratie die het eCare zorgdossier (Puur van Jou / wijkzorg) monitort.
+Vuurt een HA event bij nieuwe dagboek-items, toont komende zorgbezoeken in de kalender
+en houdt metingen bij.
+
+> **Let op:** Werkt alleen voor het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`).
+> De API is niet officieel gedocumenteerd en kan zonder aankondiging wijzigen.
 
 ## Achtergrond
 
-[eCare.nl](https://ecare.nl) is een zorgdossier platform dat gebruikt wordt door Nederlandse
-wijkzorgorganisaties. Via [wijkzorg.puurvanjou.nl](https://wijkzorg.puurvanjou.nl) kunnen
-familieleden het dossier inzien. Deze integratie pollt de achterliggende API en vuurt een
-Home Assistant event zodra er een nieuw dagboek-item verschijnt.
+[eCare.nl](https://ecare.nl) is een zorgdossier platform voor Nederlandse wijkzorgorganisaties.
+Via [wijkzorg.puurvanjou.nl](https://wijkzorg.puurvanjou.nl) kunnen familieleden het dossier inzien.
+Deze integratie pollt de achterliggende API en maakt alle relevante data beschikbaar in Home Assistant.
 
 ## Installatie via HACS
 
@@ -44,14 +40,34 @@ Je ontvangt een SMS van **+31 970 10 20 50 53**. Voer de code in.
 
 Na de eerste keer inloggen wordt de sessie opgeslagen. Toekomstige token-vernieuwingen
 verlopen automatisch **zonder SMS** zolang de IDP-sessie geldig is (typisch weken tot maanden).
-Als de sessie verloopt, vraagt HA je opnieuw te configureren.
+Als de sessie verloopt, vraagt HA je opnieuw te configureren via **Instellingen → Integraties → eCare → Opnieuw configureren**.
 
 ## Entities
+
+### Sensoren
 
 | Entity | Beschrijving |
 |--------|-------------|
 | `sensor.ecare_dagboek_items` | Totaal aantal items in het dagboek |
-| `sensor.ecare_laatste_gebeurtenis` | Omschrijving van het meest recente item |
+| `sensor.ecare_laatste_gebeurtenis` | Meest recente dagboek-item (type, wie, tekst) |
+| `sensor.ecare_eerstvolgende_bezoek` | Eerstvolgende geplande zorgbezoek (datum, tijd, zorgverlener) |
+| `sensor.ecare_client` | Naam en geboortedatum van de cliënt |
+| `sensor.ecare_gewicht` | Laatste gewichtsmeting |
+| `sensor.ecare_bloeddruk` | Laatste bloeddruk (systolisch/diastolisch) |
+| `sensor.ecare_hartslag` | Laatste hartslagmeting |
+| `sensor.ecare_temperatuur` | Laatste temperatuurmeting |
+| `sensor.ecare_glucose` | Laatste glucosemeting |
+| `sensor.ecare_pijnscore` | Laatste pijnscoresmeting |
+
+### Kalender
+
+| Entity | Beschrijving |
+|--------|-------------|
+| `calendar.ecare_planning` | Komende zorgbezoeken zichtbaar in de HA kalender |
+
+De kalender toont bezoeken uit de planning. Verlopen bezoeken (meer dan 2 uur na het geplande
+tijdstip) worden automatisch verborgen. Tijden zijn bij benadering — zorgverleners kunnen
+vroeger of later komen.
 
 ## Events
 
@@ -72,8 +88,6 @@ Bij elk nieuw dagboek-item wordt het event `ecare_new_item` gevuurd:
 
 Vereist: [Telegram bot integratie](https://www.home-assistant.io/integrations/telegram/) al geconfigureerd in HA.
 
-Voeg toe aan `automations.yaml`:
-
 ```yaml
 alias: eCare - Stuur Telegram bij nieuw dagboek-item
 trigger:
@@ -83,12 +97,12 @@ action:
   - service: telegram_bot.send_message
     data:
       message: >
-        📋 Nieuw in dossier:
+        Nieuw in dossier:
 
-        📅 {{ trigger.event.data.datum }} {{ trigger.event.data.tijd }}
-        👤 {{ trigger.event.data.wie }} ({{ trigger.event.data.discipline }})
-        🏷️ {{ trigger.event.data.type }}
-        {% if trigger.event.data.onderwerp %}📌 {{ trigger.event.data.onderwerp }}
+        {{ trigger.event.data.datum }} {{ trigger.event.data.tijd }}
+        {{ trigger.event.data.wie }} ({{ trigger.event.data.discipline }})
+        {{ trigger.event.data.type }}
+        {% if trigger.event.data.onderwerp %}{{ trigger.event.data.onderwerp }}
         {% endif %}
         {{ trigger.event.data.tekst[:400] }}
 ```
@@ -100,20 +114,19 @@ Ga naar **Instellingen → Integraties → eCare → Configureren** (standaard: 
 ## Bekende beperkingen
 
 - Werkt alleen voor het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`)
-- Andere eCare-portalen (bijv. woonzorg) zijn nog niet getest
+- Andere eCare-portalen zijn niet getest
 - De API is niet officieel gedocumenteerd en kan wijzigen
-- Sessie verloopt na verloop van tijd → opnieuw configureren met SMS vereist
+- Sessie verloopt na verloop van tijd — opnieuw configureren met SMS vereist
 
 ## Technische details
 
-De integratie gebruikt de [IdentityServer4](https://identityserver4.readthedocs.io/) OIDC
-implicit flow van `pvj-idp.ecare.nl`. Na de initiële SMS-verificatie worden de sessiecookies
-opgeslagen en wordt `prompt=none` gebruikt voor stille token-vernieuwing.
+De integratie gebruikt de IdentityServer4 OIDC implicit flow van `pvj-idp.ecare.nl`.
+Na de initiële SMS-verificatie worden de sessiecookies opgeslagen en wordt `prompt=none`
+gebruikt voor stille token-vernieuwing.
 
 ## Bijdragen
 
-Issues en pull requests zijn welkom. Dit project is gestart als persoonlijk hulpmiddel
-en wordt gedeeld in de hoop dat het anderen ook van pas komt.
+Issues en pull requests zijn welkom.
 
 ## Disclaimer
 
