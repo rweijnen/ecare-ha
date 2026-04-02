@@ -64,27 +64,26 @@ class EcareCoordinator(DataUpdateCoordinator):
         self._known_ids: set[str] = set()
         self._cookies: dict = dict(entry.data.get(CONF_COOKIES, {}))
         self._access_token: str = ""
+        self._store_loaded: bool = False
 
-    async def _async_update_data(self) -> list[dict]:
-        """Haal dagboek op, vuur events voor nieuwe items."""
-        # Laad bekende IDs uit persistent storage
-        if not self._known_ids:
+    async def _async_update_data(self) -> dict:
+        """Haal alle eCare data op en vuur events voor nieuwe dagboek-items."""
+        # Laad bekende IDs én cookies uit persistent storage (eenmalig)
+        if not self._store_loaded:
             stored = await self._store.async_load() or {}
             self._known_ids = set(stored.get(STATE_FILE_KEY, []))
+            if stored.get("cookies"):
+                self._cookies.update(stored["cookies"])
+            self._store_loaded = True
 
         try:
             async with EcareAuthClient() as client:
                 # Token vernieuwen via silent renewal (geen SMS nodig)
                 try:
                     self._access_token = await client.get_fresh_token(self._cookies)
-                    # Sla vernieuwde cookies op
                     new_cookies = client._export_cookies()
                     if new_cookies:
                         self._cookies.update(new_cookies)
-                        self.hass.config_entries.async_update_entry(
-                            self._entry,
-                            data={**self._entry.data, CONF_COOKIES: self._cookies},
-                        )
                 except AuthError as e:
                     _LOGGER.warning("Silent renewal mislukt (%s), opnieuw inloggen nodig", e)
                     # Probeer opnieuw in te loggen met opgeslagen credentials
@@ -100,7 +99,10 @@ class EcareCoordinator(DataUpdateCoordinator):
                     self._access_token = login_result["access_token"]
                     self._cookies = login_result["cookies"]
 
-                events = await client.get_dagboek(self._access_token)
+                events   = await client.get_dagboek(self._access_token)
+                planning = await client.get_planning(self._access_token)
+                client_info = await client.get_mijngegevens(self._access_token)
+                metingen = await client.get_metingen(self._access_token)
 
         except AuthError as e:
             raise UpdateFailed(f"eCare API fout: {e}") from e
@@ -134,14 +136,25 @@ class EcareCoordinator(DataUpdateCoordinator):
 
         if new_events:
             self._known_ids.update(str(e["Id"]) for e in new_events)
-            await self._store.async_save({STATE_FILE_KEY: list(self._known_ids)})
+            await self._save_store()
 
         # Initialiseer state bij eerste run
         if events and not self._known_ids:
             self._known_ids = {str(e["Id"]) for e in events}
-            await self._store.async_save({STATE_FILE_KEY: list(self._known_ids)})
+            await self._save_store()
 
-        return events
+        return {
+            "dagboek":  events,
+            "planning": planning,
+            "client":   client_info,
+            "metingen": metingen,
+        }
+
+    async def _save_store(self) -> None:
+        await self._store.async_save({
+            STATE_FILE_KEY: list(self._known_ids),
+            "cookies":      self._cookies,
+        })
 
 
 def _strip_html(text: str) -> str:

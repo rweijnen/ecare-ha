@@ -240,8 +240,64 @@ class EcareAuthClient:
     # API aanroepen
     # ------------------------------------------------------------------
 
+    async def get_planning(self, access_token: str) -> list[dict]:
+        """Haal komende planning op (GetPlanningVanKomendeWeken).
+
+        Geeft een platte lijst van bezoeken: datum, dag, tijd, wie, locatie.
+        """
+        data = await self._api_post("planning/GetPlanningVanKomendeWeken", access_token)
+        bezoeken = []
+        for dag in data.get("Datums", []):
+            datum_tekst = dag.get("Datum", {}).get("tekst", "")
+            datum_iso = dag.get("Datum", {}).get("Datum", "")[:10]
+            dag_naam = dag.get("Datum", {}).get("dddd", "")
+            for bezoek in dag.get("Bezoeken", []):
+                if bezoek.get("VandaagGeenZorg"):
+                    continue
+                bezoeken.append({
+                    "datum":     datum_tekst,
+                    "datum_iso": datum_iso,
+                    "dag":       dag_naam,
+                    "tijd":      bezoek.get("Tijd", {}).get("Tekst", ""),
+                    "wie":       (bezoek.get("Medewerker") or {}).get("WeergaveNaam", ""),
+                    "locatie":   bezoek.get("Toelichting", ""),
+                })
+        return bezoeken
+
+    async def get_mijngegevens(self, access_token: str) -> dict:
+        """Haal cliëntgegevens op — alleen niet-gevoelige velden."""
+        data = await self._api_post("mijngegevens/GetMijnGegevens", access_token)
+        naam_delen = [data.get("Voornaam", ""), data.get("Tussenvoegsel", ""), data.get("Achternaam", "")]
+        return {
+            "naam":          " ".join(d for d in naam_delen if d).strip(),
+            "geboortedatum": (data.get("GeboorteDatum") or "")[:10],
+        }
+
+    async def get_metingen(self, access_token: str) -> dict:
+        """Haal laatste waarden op voor alle metingtypen.
+
+        Geeft een dict terug met de meest recente meting per type,
+        of None als er nog geen metingen zijn.
+        """
+        endpoints = {
+            "gewicht":   "metingen/getgewichtmetingen",
+            "glucose":   "metingen/getglucosemetingen",
+            "bht":       "metingen/getpersooninstrumentbht",
+            "pijn":      "metingen/getpijnmetingen",
+        }
+        result: dict = {}
+        for key, path in endpoints.items():
+            rows = await self._api_post(path, access_token)
+            result[key] = rows[0] if rows else None
+        return result
+
     async def get_dagboek(self, access_token: str) -> list[dict]:
         """Haal dagboek-items op van de eCare API."""
+        data = await self._api_post("dagboek/GetDagboek", access_token, data=b"null")
+        return data.get("Gebeurtenissen", [])
+
+    async def _api_post(self, path: str, access_token: str, data: bytes = b"") -> dict | list:
+        """Generieke helper voor POST-aanroepen naar de eCare API."""
         s = self._s()
         api_base = await self._get_api_base()
         headers = {
@@ -249,12 +305,11 @@ class EcareAuthClient:
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
         }
-        async with s.post(f"{api_base}/api/dagboek/GetDagboek", headers=headers, data=b"null") as r:
+        async with s.post(f"{api_base}/api/{path}", headers=headers, data=data) as r:
             if r.status == 401:
                 raise AuthError("Access token verlopen of ongeldig")
             r.raise_for_status()
-            data = await r.json()
-            return data.get("Gebeurtenissen", [])
+            return await r.json()
 
     async def _get_api_base(self) -> str:
         s = self._s()
