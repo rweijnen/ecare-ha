@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "eCare inloggen",
+        "description": "Voer je e-mailadres en wachtwoord in. Je ontvangt daarna een SMS-code.",
+        "data": {
+          "email": "E-mailadres",
+          "password": "Wachtwoord"
+        }
+      },
+      "sms": {
+        "title": "SMS verificatie",
+        "description": "Voer de verificatiecode in die je per SMS hebt ontvangen.\n{error_detail}",
+        "data": {
+          "sms_code": "SMS-code"
+        }
+      }
+    },
+    "error": {
+      "auth_error": "Inloggen mislukt: {error_detail}",
+      "sms_error": "SMS code onjuist: {error_detail}",
+      "unknown": "Onbekende fout — controleer de logs."
+    },
+    "abort": {
+      "already_configured": "eCare is al geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "eCare opties",
+        "data": {
+          "scan_interval": "Poll interval (minuten)"
+        }
+      }
+    }
+  }
+}

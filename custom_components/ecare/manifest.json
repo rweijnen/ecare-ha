@@ -1,0 +1,12 @@
+{
+  "domain": "ecare",
+  "name": "eCare Dossier Monitor",
+  "version": "1.0.0",
+  "documentation": "https://github.com/rweijnen/ecare-ha",
+  "issue_tracker": "https://github.com/rweijnen/ecare-ha/issues",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@rweijnen"],
+  "iot_class": "cloud_polling",
+  "config_flow": true
+}

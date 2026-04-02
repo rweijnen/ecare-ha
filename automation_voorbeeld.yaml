@@ -1,0 +1,23 @@
+# Plak dit in je automations.yaml of maak het via de UI
+# Vereist: Telegram bot integratie al geconfigureerd in HA
+
+alias: eCare - Stuur Telegram bij nieuw dagboek-item
+description: Stuurt een Telegram bericht wanneer er een nieuw item in het dossier verschijnt
+trigger:
+  - platform: event
+    event_type: ecare_new_item
+condition: []
+action:
+  - service: telegram_bot.send_message
+    data:
+      message: >
+        📋 Nieuw in dossier van pa:
+
+        📅 {{ trigger.event.data.datum }} {{ trigger.event.data.tijd }}
+        👤 {{ trigger.event.data.wie }}{% if trigger.event.data.discipline %} ({{ trigger.event.data.discipline }}){% endif %}
+        🏷️ {{ trigger.event.data.type }}
+        {% if trigger.event.data.onderwerp %}📌 {{ trigger.event.data.onderwerp }}
+        {% endif %}
+        {{ trigger.event.data.tekst[:400] }}
+mode: queued
+max: 5
