@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -22,13 +22,17 @@ async def async_setup_entry(
     async_add_entities([EcarePlanningCalendar(coordinator, entry)])
 
 
-class EcarePlanningCalendar(CoordinatorEntity, CalendarEntity):
+class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity):
     _attr_icon = "mdi:calendar-heart"
 
     def __init__(self, coordinator: EcareCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_calendar"
         self._attr_name = "eCare Planning"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self.async_write_ha_state()
 
     def _bezoeken(self) -> list[dict]:
         return (self.coordinator.data or {}).get("planning") or []
@@ -44,20 +48,18 @@ class EcarePlanningCalendar(CoordinatorEntity, CalendarEntity):
         except ValueError:
             return None
         end = start + timedelta(hours=1)
-        wie = bezoek.get("wie", "")
-        locatie = bezoek.get("locatie", "")
-        summary = wie or "Zorgbezoek"
+        wie = bezoek.get("wie", "") or "Zorgbezoek"
+        locatie = bezoek.get("locatie") or None
         return CalendarEvent(
             start=start,
             end=end,
-            summary=summary,
-            description=locatie or None,
-            location=locatie or None,
+            summary=wie,
+            description=locatie,
+            location=locatie,
         )
 
     @property
     def event(self) -> CalendarEvent | None:
-        """Eerstvolgende bezoek (voor het kalender-badge icoontje)."""
         for bezoek in self._bezoeken():
             ev = self._to_event(bezoek)
             if ev:
@@ -73,6 +75,6 @@ class EcarePlanningCalendar(CoordinatorEntity, CalendarEntity):
         events = []
         for bezoek in self._bezoeken():
             ev = self._to_event(bezoek)
-            if ev and ev.start < end_date and ev.end > start_date:
+            if ev and ev.end > start_date and ev.start < end_date:
                 events.append(ev)
         return events
