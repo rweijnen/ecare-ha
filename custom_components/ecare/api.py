@@ -26,6 +26,7 @@ from __future__ import annotations
 import logging
 import re
 import secrets
+from datetime import datetime, timedelta
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
@@ -246,6 +247,7 @@ class EcareAuthClient:
         Geeft een platte lijst van bezoeken: datum, dag, tijd, wie, locatie.
         """
         data = await self._api_post("planning/GetPlanningVanKomendeWeken", access_token)
+        cutoff = datetime.now() - timedelta(hours=2)
         bezoeken = []
         for dag in data.get("Datums", []):
             datum_tekst = dag.get("Datum", {}).get("tekst", "")
@@ -254,11 +256,20 @@ class EcareAuthClient:
             for bezoek in dag.get("Bezoeken", []):
                 if bezoek.get("VandaagGeenZorg"):
                     continue
+                tijd_tekst = bezoek.get("Tijd", {}).get("Tekst", "")
+                # Filter verlopen bezoeken (2 uur na geplande tijd)
+                if datum_iso and tijd_tekst:
+                    try:
+                        bezoek_dt = datetime.strptime(f"{datum_iso} {tijd_tekst}", "%Y-%m-%d %H:%M")
+                        if bezoek_dt < cutoff:
+                            continue
+                    except ValueError:
+                        pass
                 bezoeken.append({
                     "datum":     datum_tekst,
                     "datum_iso": datum_iso,
                     "dag":       dag_naam,
-                    "tijd":      bezoek.get("Tijd", {}).get("Tekst", ""),
+                    "tijd":      tijd_tekst,
                     "wie":       (bezoek.get("Medewerker") or {}).get("WeergaveNaam", ""),
                     "locatie":   bezoek.get("Toelichting", ""),
                 })
