@@ -108,6 +108,15 @@ class EcareCoordinator(DataUpdateCoordinator):
         # Detecteer nieuwe items
         new_events = [e for e in events if str(e["Id"]) not in self._known_ids]
 
+        # Eenmalige debug dump van de ruwe structuur per GebeurtenisType
+        import json as _json
+        _seen_types: set = set()
+        for _ev in events:
+            _t = _ev.get("GebeurtenisType", "onbekend")
+            if _t not in _seen_types:
+                _seen_types.add(_t)
+                _LOGGER.warning("RAW_ITEM type=%s: %s", _t, _json.dumps(_ev, ensure_ascii=False))
+
         for event in new_events:
             _LOGGER.info(
                 "Nieuw dagboek-item: %s — %s",
