@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import EcareCoordinator
 from .const import DOMAIN
@@ -44,7 +45,7 @@ class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity)
         if not datum_iso or not tijd_tekst:
             return None
         try:
-            start = datetime.strptime(f"{datum_iso} {tijd_tekst}", "%Y-%m-%d %H:%M")
+            start = dt_util.as_local(datetime.strptime(f"{datum_iso} {tijd_tekst}", "%Y-%m-%d %H:%M"))
         except ValueError:
             return None
         end = start + timedelta(hours=1)
