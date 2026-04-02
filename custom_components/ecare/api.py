@@ -165,10 +165,13 @@ class EcareAuthClient:
             token = await self._follow_to_token(location)
             return {"status": "ok", "access_token": token, "cookies": self._export_cookies()}
 
-        # 3b. SMS vereist
+        # 3b. SMS vereist — GET de pagina zodat de IDP de SMS verstuurt
         if TWO_FACTOR_PATH in location:
-            _LOGGER.debug("SMS vereist — redirect naar: %s", location)
-            return {"status": "need_sms", "sms_url": location, "cookies": self._export_cookies()}
+            _LOGGER.debug("SMS vereist — GET TwoFactorAuthenticate om SMS te triggeren: %s", location)
+            async with s.get(location, allow_redirects=True) as r:
+                sms_url_actual = str(r.url)
+            _LOGGER.debug("SMS zou nu verstuurd moeten zijn naar het geregistreerde nummer")
+            return {"status": "need_sms", "sms_url": sms_url_actual, "cookies": self._export_cookies()}
 
         raise AuthError(f"Onverwachte redirect na login: {location}")
 
