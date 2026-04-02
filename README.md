@@ -11,6 +11,12 @@ en houdt metingen bij.
 > **Let op:** Werkt alleen voor het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`).
 > De API is niet officieel gedocumenteerd en kan zonder aankondiging wijzigen.
 
+## Getest met
+
+| Zorgorganisatie | Type | Status |
+|----------------|------|--------|
+| [BrabantZorg](https://www.brabantzorg.eu) | Thuiszorg | ✅ Werkend |
+
 ## Achtergrond
 
 [eCare.nl](https://ecare.nl) is een zorgdossier platform voor Nederlandse wijkzorgorganisaties.
