@@ -107,41 +107,47 @@ class EcareCoordinator(DataUpdateCoordinator):
         except AuthError as e:
             raise UpdateFailed(f"eCare API fout: {e}") from e
 
-        # Detecteer nieuwe items
-        new_events = [e for e in events if str(e["Id"]) not in self._known_ids]
-
-        for event in new_events:
-            _LOGGER.info(
-                "Nieuw dagboek-item: %s — %s",
-                event.get("Datum", {}).get("tekst", ""),
-                event.get("Onderwerp") or event.get("GebeurtenisType", ""),
-            )
-            acties = event.get("Acties") or []
-            self.hass.bus.async_fire(
-                f"{DOMAIN}_new_item",
-                {
-                    "id":        str(event["Id"]),
-                    "type":      event.get("GebeurtenisType", ""),
-                    "datum":     event.get("Datum", {}).get("tekst", ""),
-                    "tijd":      event.get("Tijd", {}).get("Tekst", ""),
-                    "wie":       (event.get("Medewerker") or {}).get("WeergaveNaam", ""),
-                    "discipline": event.get("AlsDiscipline") or event.get("AangemaaktDoorDiscipline") or "",
-                    "onderwerp": event.get("Onderwerp") or (acties[0].get("Probleemgebied") if acties else "") or "",
-                    "tekst":     _strip_html(
-                        event.get("Toelichting") or
-                        " | ".join(a.get("Zorgbeschrijving", "") for a in acties if a.get("Zorgbeschrijving"))
-                    )[:500],
-                },
-            )
-
-        if new_events:
-            self._known_ids.update(str(e["Id"]) for e in new_events)
-            await self._save_store()
-
-        # Initialiseer state bij eerste run
-        if events and not self._known_ids:
+        # Eerste run: stil initialiseren zonder events te vuren
+        if not self._known_ids and events:
             self._known_ids = {str(e["Id"]) for e in events}
+            _LOGGER.info("eCare eerste run: %d bestaande items opgeslagen, geen events gevuurd", len(self._known_ids))
             await self._save_store()
+        else:
+            # Detecteer nieuwe items
+            new_events = [e for e in events if str(e["Id"]) not in self._known_ids]
+
+            for event in new_events:
+                _LOGGER.info(
+                    "Nieuw dagboek-item: %s — %s",
+                    event.get("Datum", {}).get("tekst", ""),
+                    event.get("Onderwerp") or event.get("GebeurtenisType", ""),
+                )
+                acties = event.get("Acties") or []
+                wie = (
+                    (event.get("Medewerker") or {}).get("WeergaveNaam")
+                    or event.get("AangemaaktDoorDisplayName")
+                    or ""
+                )
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_new_item",
+                    {
+                        "id":        str(event["Id"]),
+                        "type":      event.get("GebeurtenisType", ""),
+                        "datum":     event.get("Datum", {}).get("tekst", ""),
+                        "tijd":      event.get("Tijd", {}).get("Tekst", ""),
+                        "wie":       wie,
+                        "discipline": event.get("AlsDiscipline") or event.get("AangemaaktDoorDiscipline") or "",
+                        "onderwerp": event.get("Onderwerp") or (acties[0].get("Probleemgebied") if acties else "") or "",
+                        "tekst":     _strip_html(
+                            event.get("Toelichting") or
+                            " | ".join(a.get("Zorgbeschrijving", "") for a in acties if a.get("Zorgbeschrijving"))
+                        )[:500],
+                    },
+                )
+
+            if new_events:
+                self._known_ids.update(str(e["Id"]) for e in new_events)
+                await self._save_store()
 
         return {
             "dagboek":  events,

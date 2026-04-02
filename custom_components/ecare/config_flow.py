@@ -6,6 +6,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 
 from .api import AuthError, EcareAuthClient
 from .const import (
@@ -152,7 +153,15 @@ class EcareOptionsFlow(config_entries.OptionsFlow):
                         default=self._config_entry.options.get(
                             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                         ),
-                    ): vol.All(int, vol.Range(min=5, max=60)),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=5,
+                            max=60,
+                            step=1,
+                            unit_of_measurement="minuten",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                 }
             ),
         )

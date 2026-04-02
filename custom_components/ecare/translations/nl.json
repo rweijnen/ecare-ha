@@ -31,7 +31,10 @@
       "init": {
         "title": "eCare opties",
         "data": {
-          "scan_interval": "Poll interval (minuten)"
+          "scan_interval": "Poll interval"
+        },
+        "data_description": {
+          "scan_interval": "Hoe vaak HA de eCare API raadpleegt (5–60 minuten)."
         }
       }
     }
