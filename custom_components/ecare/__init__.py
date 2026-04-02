@@ -108,21 +108,13 @@ class EcareCoordinator(DataUpdateCoordinator):
         # Detecteer nieuwe items
         new_events = [e for e in events if str(e["Id"]) not in self._known_ids]
 
-        # Eenmalige debug dump van de ruwe structuur per GebeurtenisType
-        import json as _json
-        _seen_types: set = set()
-        for _ev in events:
-            _t = _ev.get("GebeurtenisType", "onbekend")
-            if _t not in _seen_types:
-                _seen_types.add(_t)
-                _LOGGER.warning("RAW_ITEM type=%s: %s", _t, _json.dumps(_ev, ensure_ascii=False))
-
         for event in new_events:
             _LOGGER.info(
                 "Nieuw dagboek-item: %s — %s",
                 event.get("Datum", {}).get("tekst", ""),
                 event.get("Onderwerp") or event.get("GebeurtenisType", ""),
             )
+            acties = event.get("Acties") or []
             self.hass.bus.async_fire(
                 f"{DOMAIN}_new_item",
                 {
@@ -131,9 +123,12 @@ class EcareCoordinator(DataUpdateCoordinator):
                     "datum":     event.get("Datum", {}).get("tekst", ""),
                     "tijd":      event.get("Tijd", {}).get("Tekst", ""),
                     "wie":       (event.get("Medewerker") or {}).get("WeergaveNaam", ""),
-                    "discipline":event.get("AlsDiscipline", ""),
-                    "onderwerp": event.get("Onderwerp") or "",
-                    "tekst":     _strip_html(event.get("Toelichting") or "")[:500],
+                    "discipline": event.get("AlsDiscipline") or event.get("AangemaaktDoorDiscipline") or "",
+                    "onderwerp": event.get("Onderwerp") or (acties[0].get("Probleemgebied") if acties else "") or "",
+                    "tekst":     _strip_html(
+                        event.get("Toelichting") or
+                        " | ".join(a.get("Zorgbeschrijving", "") for a in acties if a.get("Zorgbeschrijving"))
+                    )[:500],
                 },
             )
 
