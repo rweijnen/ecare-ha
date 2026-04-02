@@ -23,10 +23,13 @@ Bekende IDP flow (pvj-idp.ecare.nl / IdentityServer4):
 """
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 from html.parser import HTMLParser
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
+
+_LOGGER = logging.getLogger(__name__)
 
 import aiohttp
 
@@ -131,30 +134,40 @@ class EcareAuthClient:
         if LOGIN_PATH not in login_url:
             raise AuthError(f"Verwachtte login pagina, kreeg: {login_url}")
 
+        _LOGGER.debug("Login pagina geladen: %s", login_url)
+
         # 2. Login form invullen + indienen
         action, fields = _parse_form(login_html, login_url)
         fields["username"] = email
         fields["password"] = password
         fields.setdefault("button", "login")
 
+        _LOGGER.debug("POST login form naar: %s (velden: %s)", action, list(fields.keys()))
+
         async with s.post(action, data=fields, allow_redirects=False) as r:
             location = r.headers.get("Location", "")
+            _LOGGER.debug("Login POST antwoord: status=%s location=%s", r.status, location)
 
         if not location:
             # Terug op login pagina → foutmelding ophalen
             async with s.post(action, data=fields, allow_redirects=True) as r2:
                 html = await r2.text()
-            raise AuthError(self._extract_error(html) or "Inloggen mislukt — controleer je e-mail en wachtwoord.")
+            msg = self._extract_error(html) or "Inloggen mislukt — controleer je e-mail en wachtwoord."
+            _LOGGER.warning("Login mislukt: %s", msg)
+            raise AuthError(msg)
 
         location = _abs(location, IDP_BASE)
+        _LOGGER.debug("Redirect na login naar: %s", location)
 
         # 3a. Direct token (TwoFactorRememberMe cookie was geldig)
         if CALLBACK_PATH in location:
+            _LOGGER.debug("Direct token pad — geen SMS vereist")
             token = await self._follow_to_token(location)
             return {"status": "ok", "access_token": token, "cookies": self._export_cookies()}
 
         # 3b. SMS vereist
         if TWO_FACTOR_PATH in location:
+            _LOGGER.debug("SMS vereist — redirect naar: %s", location)
             return {"status": "need_sms", "sms_url": location, "cookies": self._export_cookies()}
 
         raise AuthError(f"Onverwachte redirect na login: {location}")
@@ -262,8 +275,7 @@ class EcareAuthClient:
         }
         if prompt:
             params["prompt"] = prompt
-        qs = "&".join(f"{k}={v}" for k, v in params.items())
-        return f"{IDP_BASE}{AUTHORIZE_PATH}?{qs}"
+        return f"{IDP_BASE}{AUTHORIZE_PATH}?{urlencode(params)}"
 
     async def _follow_to_token(self, start_url: str) -> str:
         """
