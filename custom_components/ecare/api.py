@@ -279,9 +279,16 @@ class EcareAuthClient:
         """Haal cliëntgegevens op — alleen niet-gevoelige velden."""
         data = await self._api_post("mijngegevens/GetMijnGegevens", access_token)
         naam_delen = [data.get("Voornaam", ""), data.get("Tussenvoegsel", ""), data.get("Achternaam", "")]
+        geboortedatum = None
+        raw = (data.get("GeboorteDatum") or "")[:10]
+        if raw:
+            try:
+                geboortedatum = datetime.strptime(raw, "%Y-%m-%d").date()
+            except ValueError:
+                geboortedatum = None
         return {
             "naam":          " ".join(d for d in naam_delen if d).strip(),
-            "geboortedatum": (data.get("GeboorteDatum") or "")[:10],
+            "geboortedatum": geboortedatum,
         }
 
     async def get_metingen(self, access_token: str) -> dict:
