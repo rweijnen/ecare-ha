@@ -8,7 +8,7 @@ Home Assistant integratie die het eCare zorgdossier (Puur van Jou / wijkzorg) mo
 Vuurt een HA event bij nieuwe dagboek-items, toont komende zorgbezoeken in de kalender
 en houdt metingen bij.
 
-> **Let op:** Werkt alleen voor het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`).
+> **Let op:** Ik het zelf aalleen toegng tot het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`) en dus alleen daarmee getest.
 > De API is niet officieel gedocumenteerd en kan zonder aankondiging wijzigen.
 
 ## Getest met
