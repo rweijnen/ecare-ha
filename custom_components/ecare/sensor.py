@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import EcareCoordinator
+from . import EcareCoordinator, _strip_html
 from .const import DOMAIN
 
 
@@ -64,13 +64,24 @@ class EcareDagboekSensor(_EcareBase):
         recente = []
         for e in events[:10]:
             acties = e.get("Acties") or []
+            wie = (
+                (e.get("Medewerker") or {}).get("WeergaveNaam")
+                or e.get("AangemaaktDoorDisplayName")
+                or ""
+            )
+            tekst = (
+                e.get("Toelichting")
+                or " | ".join(a.get("Zorgbeschrijving", "") for a in acties if a.get("Zorgbeschrijving"))
+                or ""
+            )
             recente.append({
                 "datum":      e.get("Datum", {}).get("tekst", ""),
                 "tijd":       e.get("Tijd", {}).get("Tekst", ""),
                 "type":       e.get("GebeurtenisType", ""),
-                "wie":        (e.get("Medewerker") or {}).get("WeergaveNaam", ""),
+                "wie":        wie,
                 "discipline": e.get("AlsDiscipline") or e.get("AangemaaktDoorDiscipline") or "",
                 "onderwerp":  e.get("Onderwerp") or (acties[0].get("Probleemgebied") if acties else "") or "",
+                "tekst":      _strip_html(tekst)[:500],
             })
         return {
             "laatste_datum":   latest.get("Datum", {}).get("tekst", ""),
