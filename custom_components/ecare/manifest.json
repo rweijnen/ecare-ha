@@ -1,7 +1,7 @@
 {
   "domain": "ecare",
   "name": "eCare Dossier Monitor",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "documentation": "https://github.com/rweijnen/ecare-ha",
   "issue_tracker": "https://github.com/rweijnen/ecare-ha/issues",
   "requirements": [],

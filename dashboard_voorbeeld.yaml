@@ -37,10 +37,15 @@ views:
         content: |
           {% set naam = states('sensor.ecare_client') %}
           {% set gd = state_attr('sensor.ecare_client', 'geboortedatum') %}
+          {% set avatar = state_attr('sensor.ecare_client', 'avatar') %}
           <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: #5c9ecf; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.4em; flex-shrink: 0;">
+            {% if avatar %}
+            <img src="{{ avatar }}" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" />
+            {% else %}
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: #5c9ecf; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.4em; flex-shrink: 0;">
               <ha-icon icon="mdi:account-heart" style="--mdc-icon-size: 28px; color: white;"></ha-icon>
             </div>
+            {% endif %}
             <div>
               <div style="font-size: 1.25em; font-weight: 600;">{{ naam }}</div>
               {% if gd %}<div style="color: var(--secondary-text-color); font-size: 0.9em; margin-top: 2px;">Geboortedatum: {{ strptime(gd, '%Y-%m-%d').strftime('%d-%m-%Y') }}</div>{% endif %}
@@ -65,9 +70,8 @@ views:
             {% for item in items[:8] %}
             {% set wie = item.get('wie', '') or 'Onbekend' %}
             {% set tekst = item.get('tekst', '') %}
-            {% set initiaal = wie[0] | upper if wie else '?' %}
-            {% set kleuren = {'A':'#9b59b6','B':'#3498db','C':'#1abc9c','D':'#e67e22','E':'#e74c3c','F':'#2ecc71','G':'#f39c12','H':'#1abc9c','I':'#9b59b6','J':'#3498db','K':'#e74c3c','L':'#2ecc71','M':'#e67e22','N':'#16a085','O':'#7f8c8d','P':'#8e44ad','Q':'#2c3e50','R':'#27ae60','S':'#5c9ecf','T':'#d35400','U':'#c0392b','V':'#2980b9','W':'#f1c40f','X':'#7f8c8d','Y':'#e67e22','Z':'#1abc9c'} %}
-            {% set kleur = kleuren.get(initiaal, '#7f8c8d') %}
+            {% set initiaal = item.get('initiaal', wie[0] | upper if wie else '?') %}
+            {% set kleur = item.get('kleur', '#7f8c8d') %}
             {% set badge_kleuren = {'Verpleging':'#3498db','Mantelzorger':'#27ae60','Ergotherapeut':'#e67e22','Fysiotherapeut':'#9b59b6'} %}
             {% set badge_kleur = badge_kleuren.get(item.get('discipline',''), '#7f8c8d') %}
             <div style="display: flex; gap: 14px; padding: 14px 0;{% if not loop.last %} border-bottom: 1px solid var(--divider-color);{% endif %}">
@@ -118,7 +122,7 @@ views:
                 <div style="padding: 10px 0; border-left: 3px solid var(--primary-color); padding-left: 12px;{% if not loop.last %} margin-bottom: 8px;{% endif %}">
                   <div style="font-weight: 700;">{{ b.dag or '' }}</div>
                   <div style="color: var(--secondary-text-color); font-size: 0.9em; margin-top: 3px;">
-                    {{ b.tijd or '' }} · {{ b.wie or '' }}{% if b.locatie %}<br>{{ b.locatie }}{% endif %}
+                    {{ b.tijd or '' }}{% if b.get('tijd_tot') %} - {{ b.tijd_tot }}{% endif %} · {{ b.wie or '' }}{% if b.locatie %}<br>{{ b.locatie }}{% endif %}
                   </div>
                 </div>
                 {% endfor %}
