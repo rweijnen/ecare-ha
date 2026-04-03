@@ -79,6 +79,8 @@ class EcareDagboekSensor(_EcareBase):
                 "tijd":       e.get("Tijd", {}).get("Tekst", ""),
                 "type":       e.get("GebeurtenisType", ""),
                 "wie":        wie,
+                "initiaal":   e.get("Initials", wie[0].upper() if wie else "?"),
+                "kleur":      e.get("Color", "#7f8c8d"),
                 "discipline": e.get("AlsDiscipline") or e.get("AangemaaktDoorDiscipline") or "",
                 "onderwerp":  e.get("Onderwerp") or (acties[0].get("Probleemgebied") if acties else "") or "",
                 "tekst":      _strip_html(tekst)[:500],
@@ -151,9 +153,18 @@ class EcareClientSensor(_EcareBase):
         return (self._data().get("client") or {}).get("naam") or None
 
     @property
+    def entity_picture(self) -> str | None:
+        return (self._data().get("client") or {}).get("avatar") or None
+
+    @property
     def extra_state_attributes(self) -> dict:
         client = self._data().get("client") or {}
-        return {"geboortedatum": client.get("geboortedatum", "")}
+        attrs = {"geboortedatum": client.get("geboortedatum", "")}
+        for key in ("avatar", "telefoon", "email", "adres"):
+            val = client.get(key, "")
+            if val:
+                attrs[key] = val
+        return attrs
 
 
 # ------------------------------------------------------------------

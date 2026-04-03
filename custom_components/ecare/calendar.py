@@ -48,7 +48,14 @@ class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity)
             start = dt_util.as_local(datetime.strptime(f"{datum_iso} {tijd_tekst}", "%Y-%m-%d %H:%M"))
         except ValueError:
             return None
-        end = start + timedelta(hours=1)
+        tijd_tot = bezoek.get("tijd_tot", "")
+        if datum_iso and tijd_tot:
+            try:
+                end = dt_util.as_local(datetime.strptime(f"{datum_iso} {tijd_tot}", "%Y-%m-%d %H:%M"))
+            except ValueError:
+                end = start + timedelta(hours=1)
+        else:
+            end = start + timedelta(hours=1)
         wie = bezoek.get("wie", "") or "Zorgbezoek"
         locatie = bezoek.get("locatie") or None
         return CalendarEvent(
