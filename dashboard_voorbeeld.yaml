@@ -1,0 +1,161 @@
+# eCare Voorbeeld Dashboard
+#
+# Gebruik: kopieer de inhoud naar een nieuw dashboard via
+#   Instellingen → Dashboards → Dashboard toevoegen → kies "Vanaf nul"
+#   Klik rechtsboven op ⋮ → Raw configuratie-editor → plak deze YAML
+#
+# Vereist:
+#   - eCare integratie geconfigureerd
+#   - HACS frontend: HTML Jinja2 Template Card, Layout Card
+#
+# Responsief: past zich automatisch aan voor telefoon, tablet en desktop.
+
+title: eCare Zorgdossier
+views:
+  - title: Zorgdossier
+    type: custom:grid-layout
+    layout:
+      grid-template-columns: 65% 35%
+      grid-template-rows: auto auto
+      grid-template-areas: |
+        "header header"
+        "dagboek rechts"
+      mediaquery:
+        "(max-width: 800px)":
+          grid-template-columns: 100%
+          grid-template-areas: |
+            "header"
+            "dagboek"
+            "rechts"
+    cards:
+
+      # ── Cliëntgegevens (volle breedte) ───────────────────────────
+      - type: custom:html-template-card
+        view_layout:
+          grid-area: header
+        ignore_line_breaks: true
+        content: |
+          {% set naam = states('sensor.ecare_client') %}
+          {% set gd = state_attr('sensor.ecare_client', 'geboortedatum') %}
+          <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: #5c9ecf; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.4em; flex-shrink: 0;">
+              <ha-icon icon="mdi:account-heart" style="--mdc-icon-size: 28px; color: white;"></ha-icon>
+            </div>
+            <div>
+              <div style="font-size: 1.25em; font-weight: 600;">{{ naam }}</div>
+              {% if gd %}<div style="color: var(--secondary-text-color); font-size: 0.9em; margin-top: 2px;">Geboortedatum: {{ strptime(gd, '%Y-%m-%d').strftime('%d-%m-%Y') }}</div>{% endif %}
+            </div>
+          </div>
+
+      # ── Dagboek (links, 65%) ─────────────────────────────────────
+      - type: custom:html-template-card
+        view_layout:
+          grid-area: dagboek
+        ignore_line_breaks: true
+        content: |
+          <div style="padding: 0 0 8px 0;">
+            <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--divider-color); margin-bottom: 4px;">
+              <ha-icon icon="mdi:notebook-edit-outline" style="--mdc-icon-size: 24px; color: var(--primary-color);"></ha-icon>
+              <span style="font-size: 1.2em; font-weight: 600;">Dagboek</span>
+            </div>
+            {% set items = state_attr('sensor.ecare_dagboek_items', 'recente_items') or [] %}
+            {% if items | length == 0 %}
+            <div style="padding: 16px 0; color: var(--secondary-text-color); font-style: italic;">Geen dagboek items beschikbaar.</div>
+            {% else %}
+            {% for item in items[:8] %}
+            {% set wie = item.get('wie', '') or 'Onbekend' %}
+            {% set tekst = item.get('tekst', '') %}
+            {% set initiaal = wie[0] | upper if wie else '?' %}
+            {% set kleuren = {'A':'#9b59b6','B':'#3498db','C':'#1abc9c','D':'#e67e22','E':'#e74c3c','F':'#2ecc71','G':'#f39c12','H':'#1abc9c','I':'#9b59b6','J':'#3498db','K':'#e74c3c','L':'#2ecc71','M':'#e67e22','N':'#16a085','O':'#7f8c8d','P':'#8e44ad','Q':'#2c3e50','R':'#27ae60','S':'#5c9ecf','T':'#d35400','U':'#c0392b','V':'#2980b9','W':'#f1c40f','X':'#7f8c8d','Y':'#e67e22','Z':'#1abc9c'} %}
+            {% set kleur = kleuren.get(initiaal, '#7f8c8d') %}
+            {% set badge_kleuren = {'Verpleging':'#3498db','Mantelzorger':'#27ae60','Ergotherapeut':'#e67e22','Fysiotherapeut':'#9b59b6'} %}
+            {% set badge_kleur = badge_kleuren.get(item.get('discipline',''), '#7f8c8d') %}
+            <div style="display: flex; gap: 14px; padding: 14px 0;{% if not loop.last %} border-bottom: 1px solid var(--divider-color);{% endif %}">
+              <div style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: {{ kleur }}; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15em; font-weight: 600; margin-top: 2px;">{{ initiaal }}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px;">
+                  <span style="font-weight: 600; color: #3a9bb5; font-size: 1.05em;">{{ wie }}</span>
+                  <span style="font-size: 0.82em; color: var(--secondary-text-color);">{{ item.get('type', '') }} van {{ item.get('datum', '') }}{% if item.get('tijd') %} {{ item.tijd }}{% endif %}</span>
+                </div>
+                {% if item.get('onderwerp') %}
+                <div style="margin-top: 5px; font-weight: 500;">{{ item.onderwerp }}</div>
+                {% endif %}
+                {% if tekst %}
+                <div style="margin-top: 4px; color: var(--secondary-text-color); line-height: 1.45; font-size: 0.92em;">{{ tekst[:300] }}</div>
+                {% endif %}
+                {% if item.get('discipline') %}
+                <div style="margin-top: 8px; text-align: right;">
+                  <span style="display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 0.8em; font-weight: 500; border: 1.5px solid {{ badge_kleur }}; color: {{ badge_kleur }};">{{ item.discipline }}</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+          </div>
+
+      # ── Planning + Metingen (rechts, 35%) ─────────────────────────
+      - type: vertical-stack
+        view_layout:
+          grid-area: rechts
+        cards:
+          - type: custom:html-template-card
+            ignore_line_breaks: true
+            content: |
+              <div style="padding: 0 0 8px 0;">
+                <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--divider-color); margin-bottom: 4px;">
+                  <ha-icon icon="mdi:calendar-clock" style="--mdc-icon-size: 24px; color: var(--primary-color);"></ha-icon>
+                  <span style="font-size: 1.2em; font-weight: 600;">Planning</span>
+                </div>
+                <div style="padding: 8px 12px; margin: 8px 0 12px 0; border-left: 3px solid var(--warning-color); color: var(--secondary-text-color); font-size: 0.85em; font-style: italic;">
+                  Let op: tijden zijn bij benadering. Zorgverlener kan iets eerder of later komen.
+                </div>
+                {% set bezoeken = state_attr('sensor.ecare_eerstvolgende_bezoek', 'bezoeken') or [] %}
+                {% if bezoeken | length == 0 %}
+                <div style="padding: 16px 0; color: var(--secondary-text-color); font-style: italic;">Geen bezoeken gepland.</div>
+                {% else %}
+                {% for b in bezoeken[:6] %}
+                <div style="padding: 10px 0; border-left: 3px solid var(--primary-color); padding-left: 12px;{% if not loop.last %} margin-bottom: 8px;{% endif %}">
+                  <div style="font-weight: 700;">{{ b.dag or '' }}</div>
+                  <div style="color: var(--secondary-text-color); font-size: 0.9em; margin-top: 3px;">
+                    {{ b.tijd or '' }} · {{ b.wie or '' }}{% if b.locatie %}<br>{{ b.locatie }}{% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+              </div>
+
+          - type: custom:html-template-card
+            ignore_line_breaks: true
+            content: |
+              {% set g = states('sensor.ecare_gewicht') %}
+              {% set bp = states('sensor.ecare_bloeddruk') %}
+              {% set hr = states('sensor.ecare_hartslag') %}
+              {% set t = states('sensor.ecare_temperatuur') %}
+              {% set gl = states('sensor.ecare_glucose') %}
+              {% set p = states('sensor.ecare_pijnscore') %}
+              {% set na = ['unknown', 'unavailable'] %}
+              {% set metingen = [] %}
+              {% if g not in na %}{% set metingen = metingen + [('mdi:scale-bathroom', 'Gewicht', g, 'kg')] %}{% endif %}
+              {% if bp not in na %}{% set metingen = metingen + [('mdi:heart-pulse', 'Bloeddruk', bp, 'mmHg')] %}{% endif %}
+              {% if hr not in na %}{% set metingen = metingen + [('mdi:heart', 'Hartslag', hr, 'bpm')] %}{% endif %}
+              {% if t not in na %}{% set metingen = metingen + [('mdi:thermometer', 'Temperatuur', t, '°C')] %}{% endif %}
+              {% if gl not in na %}{% set metingen = metingen + [('mdi:diabetes', 'Glucose', gl, 'mmol/L')] %}{% endif %}
+              {% if p not in na %}{% set metingen = metingen + [('mdi:emoticon-sad-outline', 'Pijnscore', p, '/ 10')] %}{% endif %}
+              <div style="padding: 0 0 8px 0;">
+                <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--divider-color); margin-bottom: 4px;">
+                  <ha-icon icon="mdi:clipboard-pulse" style="--mdc-icon-size: 24px; color: var(--primary-color);"></ha-icon>
+                  <span style="font-size: 1.2em; font-weight: 600;">Laatste metingen</span>
+                </div>
+                {% if metingen | length > 0 %}
+                {% for icon, label, waarde, eenheid in metingen %}
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;{% if not loop.last %} border-bottom: 1px solid var(--divider-color);{% endif %}">
+                  <ha-icon icon="{{ icon }}" style="--mdc-icon-size: 20px; color: var(--secondary-text-color);"></ha-icon>
+                  <span style="flex: 1; color: var(--secondary-text-color);">{{ label }}</span>
+                  <span style="font-weight: 600;">{{ waarde }} {{ eenheid }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div style="padding: 12px 0; color: var(--secondary-text-color); font-style: italic;">Geen meetgegevens beschikbaar.</div>
+                {% endif %}
+              </div>
