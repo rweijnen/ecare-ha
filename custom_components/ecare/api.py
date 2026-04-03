@@ -244,10 +244,10 @@ class EcareAuthClient:
     async def get_planning(self, access_token: str) -> list[dict]:
         """Haal komende planning op (GetPlanningVanKomendeWeken).
 
-        Geeft een platte lijst van bezoeken: datum, dag, tijd, wie, locatie.
+        Geeft een platte lijst van bezoeken: datum, dag, tijd, tijd_tot, wie, locatie.
         """
         data = await self._api_post("planning/GetPlanningVanKomendeWeken", access_token)
-        cutoff = datetime.now() - timedelta(hours=2)
+        now = datetime.now()
         bezoeken = []
         for dag in data.get("Datums", []):
             datum_tekst = dag.get("Datum", {}).get("tekst", "")
@@ -257,11 +257,13 @@ class EcareAuthClient:
                 if bezoek.get("VandaagGeenZorg"):
                     continue
                 tijd_tekst = bezoek.get("Tijd", {}).get("Tekst", "")
-                # Filter verlopen bezoeken (2 uur na geplande tijd)
-                if datum_iso and tijd_tekst:
+                tijd_tot_tekst = (bezoek.get("GewensteTijdTot") or {}).get("Tekst", "")
+                # Filter verlopen bezoeken op basis van eindtijd
+                if datum_iso and (tijd_tot_tekst or tijd_tekst):
                     try:
-                        bezoek_dt = datetime.strptime(f"{datum_iso} {tijd_tekst}", "%Y-%m-%d %H:%M")
-                        if bezoek_dt < cutoff:
+                        eind_str = tijd_tot_tekst or tijd_tekst
+                        eind_dt = datetime.strptime(f"{datum_iso} {eind_str}", "%Y-%m-%d %H:%M")
+                        if eind_dt < now:
                             continue
                     except ValueError:
                         pass
@@ -270,6 +272,7 @@ class EcareAuthClient:
                     "datum_iso": datum_iso,
                     "dag":       dag_naam,
                     "tijd":      tijd_tekst,
+                    "tijd_tot":  tijd_tot_tekst,
                     "wie":       (bezoek.get("Medewerker") or {}).get("WeergaveNaam", ""),
                     "locatie":   bezoek.get("Toelichting", ""),
                 })
@@ -286,9 +289,17 @@ class EcareAuthClient:
                 geboortedatum = datetime.strptime(raw, "%Y-%m-%d").date()
             except ValueError:
                 geboortedatum = None
+        adres_delen = [
+            f"{data.get('Straat', '')} {data.get('Huisnummer', '')}{data.get('Toevoeging', '')}".strip(),
+            f"{data.get('Postcode', '')} {data.get('Plaats', '')}".strip(),
+        ]
         return {
             "naam":          " ".join(d for d in naam_delen if d).strip(),
             "geboortedatum": geboortedatum,
+            "avatar":        data.get("AvatarImage", ""),
+            "telefoon":      data.get("Telefoon", ""),
+            "email":         data.get("Email", ""),
+            "adres":         ", ".join(d for d in adres_delen if d),
         }
 
     async def get_metingen(self, access_token: str) -> dict:
