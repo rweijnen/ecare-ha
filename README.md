@@ -95,6 +95,22 @@ Bij elk nieuw dagboek-item wordt het event `ecare_new_item` gevuurd:
 | `onderwerp` | `Medicatie` |
 | `tekst` | Inhoud (max 500 tekens, HTML gestript) |
 
+## Voorbeeld Dashboard
+
+Een compleet responsief dashboard is beschikbaar in [`dashboard_voorbeeld.yaml`](dashboard_voorbeeld.yaml).
+
+![Dashboard voorbeeld](assets/sample-report-screenshot.png)
+
+**Vereist (HACS frontend):**
+- [Layout Card](https://github.com/thomasloven/lovelace-layout-card)
+- [HTML Jinja2 Template Card](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Jinja2-Template-card)
+
+**Installatie:**
+1. Ga naar **Instellingen → Dashboards → Dashboard toevoegen → Vanaf nul**
+2. Klik rechtsboven op **⋮ → Raw configuratie-editor**
+3. Plak de inhoud van `dashboard_voorbeeld.yaml`
+4. Klik **Opslaan**
+
 ## Telegram notificatie
 
 Vereist: [Telegram bot integratie](https://www.home-assistant.io/integrations/telegram/) al geconfigureerd in HA.
