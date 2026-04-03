@@ -48,7 +48,7 @@ views:
             {% endif %}
             <div>
               <div style="font-size: 1.25em; font-weight: 600;">{{ naam }}</div>
-              {% if gd %}<div style="color: var(--secondary-text-color); font-size: 0.9em; margin-top: 2px;">Geboortedatum: {{ strptime(gd, '%Y-%m-%d').strftime('%d-%m-%Y') }}</div>{% endif %}
+              {% if gd %}<div style="color: var(--secondary-text-color); font-size: 0.9em; margin-top: 2px;">Geboortedatum: {{ gd.strftime('%d-%m-%Y') if gd.strftime is defined else gd }}</div>{% endif %}
             </div>
           </div>
 
