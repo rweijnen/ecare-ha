@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -62,6 +62,7 @@ class EcareCoordinator(DataUpdateCoordinator):
         self._entry = entry
         self._store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
         self._known_ids: set[str] = set()
+        self._planning_history: dict[str, list[dict]] = {}  # key=datum_iso
         self._cookies: dict = dict(entry.data.get(CONF_COOKIES, {}))
         self._access_token: str = ""
         self._store_loaded: bool = False
@@ -72,6 +73,7 @@ class EcareCoordinator(DataUpdateCoordinator):
         if not self._store_loaded:
             stored = await self._store.async_load() or {}
             self._known_ids = set(stored.get(STATE_FILE_KEY, []))
+            self._planning_history = stored.get("planning_history", {})
             if stored.get("cookies"):
                 self._cookies.update(stored["cookies"])
             self._store_loaded = True
@@ -149,9 +151,22 @@ class EcareCoordinator(DataUpdateCoordinator):
                 self._known_ids.update(str(e["Id"]) for e in new_events)
                 await self._save_store()
 
+        # Planning historie bijwerken: datums uit API response vervangen,
+        # datums niet meer in response (verleden) blijven bewaard.
+        api_datums = set()
+        for bezoek in planning:
+            d = bezoek.get("datum_iso", "")
+            if d:
+                api_datums.add(d)
+                self._planning_history.setdefault(d, [])
+        for d in api_datums:
+            self._planning_history[d] = [b for b in planning if b.get("datum_iso") == d]
+        await self._save_store()
+
         return {
             "dagboek":  events,
             "planning": planning,
+            "planning_history": self._planning_history,
             "client":   client_info,
             "metingen": metingen,
         }
@@ -159,6 +174,7 @@ class EcareCoordinator(DataUpdateCoordinator):
     async def _save_store(self) -> None:
         await self._store.async_save({
             STATE_FILE_KEY: list(self._known_ids),
+            "planning_history": self._planning_history,
             "cookies":      self._cookies,
         })
 
