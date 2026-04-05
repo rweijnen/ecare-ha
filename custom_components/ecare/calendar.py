@@ -1,4 +1,4 @@
-"""eCare Calendar entity — toont zorgbezoeken en zorgmomenten in de HA kalender."""
+"""eCare Calendar entities — planning bezoeken en dagboek zorgmomenten."""
 from __future__ import annotations
 
 import re
@@ -21,8 +21,15 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: EcareCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([EcarePlanningCalendar(coordinator, entry)])
+    async_add_entities([
+        EcarePlanningCalendar(coordinator, entry),
+        EcareZorgmomentenCalendar(coordinator, entry),
+    ])
 
+
+# ------------------------------------------------------------------
+# Planning kalender (bezoeken: huidig + historie)
+# ------------------------------------------------------------------
 
 class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity):
     _attr_icon = "mdi:calendar-heart"
@@ -35,10 +42,6 @@ class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity)
     @callback
     def _handle_coordinator_update(self) -> None:
         self.async_write_ha_state()
-
-    # ------------------------------------------------------------------
-    # Planning bezoeken → CalendarEvent
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _bezoek_to_event(bezoek: dict) -> CalendarEvent | None:
@@ -68,9 +71,69 @@ class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity)
             location=locatie,
         )
 
-    # ------------------------------------------------------------------
-    # Dagboek zorgmomenten → CalendarEvent
-    # ------------------------------------------------------------------
+    def _current_bezoeken(self) -> list[dict]:
+        return (self.coordinator.data or {}).get("planning") or []
+
+    def _history_bezoeken(self) -> list[dict]:
+        history = (self.coordinator.data or {}).get("planning_history") or {}
+        result = []
+        for bezoeken in history.values():
+            result.extend(bezoeken)
+        return result
+
+    @property
+    def event(self) -> CalendarEvent | None:
+        for bezoek in self._current_bezoeken():
+            ev = self._bezoek_to_event(bezoek)
+            if ev:
+                return ev
+        return None
+
+    async def async_get_events(
+        self,
+        hass: HomeAssistant,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CalendarEvent]:
+        events = []
+        seen_keys: set[str] = set()
+
+        # Huidige planning (toekomst)
+        for bezoek in self._current_bezoeken():
+            ev = self._bezoek_to_event(bezoek)
+            if ev and ev.end > start_date and ev.start < end_date:
+                key = f"{bezoek.get('datum_iso')}-{bezoek.get('tijd')}"
+                seen_keys.add(key)
+                events.append(ev)
+
+        # Opgeslagen planning historie (verleden)
+        for bezoek in self._history_bezoeken():
+            key = f"{bezoek.get('datum_iso')}-{bezoek.get('tijd')}"
+            if key in seen_keys:
+                continue
+            ev = self._bezoek_to_event(bezoek)
+            if ev and ev.end > start_date and ev.start < end_date:
+                seen_keys.add(key)
+                events.append(ev)
+
+        return events
+
+
+# ------------------------------------------------------------------
+# Zorgmomenten kalender (dagboek entries)
+# ------------------------------------------------------------------
+
+class EcareZorgmomentenCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity):
+    _attr_icon = "mdi:notebook-heart"
+
+    def __init__(self, coordinator: EcareCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_calendar_zorgmomenten"
+        self._attr_name = "eCare Zorgmomenten"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self.async_write_ha_state()
 
     @staticmethod
     def _zorgmoment_to_event(event: dict) -> CalendarEvent | None:
@@ -101,28 +164,14 @@ class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity)
             description=toelichting[:500] if toelichting else None,
         )
 
-    # ------------------------------------------------------------------
-    # CalendarEntity interface
-    # ------------------------------------------------------------------
-
-    def _current_bezoeken(self) -> list[dict]:
-        return (self.coordinator.data or {}).get("planning") or []
-
-    def _history_bezoeken(self) -> list[dict]:
-        history = (self.coordinator.data or {}).get("planning_history") or {}
-        result = []
-        for bezoeken in history.values():
-            result.extend(bezoeken)
-        return result
-
     def _zorgmomenten(self) -> list[dict]:
         events = (self.coordinator.data or {}).get("dagboek") or []
         return [e for e in events if e.get("GebeurtenisType") == "zorgmoment"]
 
     @property
     def event(self) -> CalendarEvent | None:
-        for bezoek in self._current_bezoeken():
-            ev = self._bezoek_to_event(bezoek)
+        for zm in self._zorgmomenten():
+            ev = self._zorgmoment_to_event(zm)
             if ev:
                 return ev
         return None
@@ -134,30 +183,8 @@ class EcarePlanningCalendar(CoordinatorEntity[EcareCoordinator], CalendarEntity)
         end_date: datetime,
     ) -> list[CalendarEvent]:
         events = []
-        seen_keys: set[str] = set()
-
-        # 1. Huidige planning (toekomst)
-        for bezoek in self._current_bezoeken():
-            ev = self._bezoek_to_event(bezoek)
-            if ev and ev.end > start_date and ev.start < end_date:
-                key = f"p-{bezoek.get('datum_iso')}-{bezoek.get('tijd')}"
-                seen_keys.add(key)
-                events.append(ev)
-
-        # 2. Opgeslagen planning historie (verleden)
-        for bezoek in self._history_bezoeken():
-            key = f"p-{bezoek.get('datum_iso')}-{bezoek.get('tijd')}"
-            if key in seen_keys:
-                continue
-            ev = self._bezoek_to_event(bezoek)
-            if ev and ev.end > start_date and ev.start < end_date:
-                seen_keys.add(key)
-                events.append(ev)
-
-        # 3. Dagboek zorgmomenten
         for zm in self._zorgmomenten():
             ev = self._zorgmoment_to_event(zm)
             if ev and ev.end > start_date and ev.start < end_date:
                 events.append(ev)
-
         return events
