@@ -152,16 +152,29 @@ class EcareZorgmomentenCalendar(CoordinatorEntity[EcareCoordinator], CalendarEnt
             or event.get("AangemaaktDoorDisplayName")
             or ""
         )
-        onderwerp = event.get("Onderwerp") or ""
-        toelichting = event.get("Toelichting") or ""
-        toelichting = re.sub(r"<[^>]+>", " ", toelichting).strip()
+        acties = event.get("Acties") or []
+        onderwerp = (
+            event.get("Onderwerp")
+            or (acties[0].get("Probleemgebied") if acties else "")
+            or ""
+        )
+        discipline = event.get("AlsDiscipline") or event.get("AangemaaktDoorDiscipline") or ""
+        toelichting = re.sub(r"<[^>]+>", " ", event.get("Toelichting") or "").strip()
+        acties_tekst = " | ".join(
+            a.get("Zorgbeschrijving", "") for a in acties if a.get("Zorgbeschrijving")
+        )
+        beschrijving_delen = [d for d in [onderwerp, toelichting, acties_tekst] if d]
+        beschrijving = "\n\n".join(beschrijving_delen)
+
         summary = f"{wie}: {onderwerp}" if onderwerp else wie
+        if discipline and not onderwerp:
+            summary = f"{wie} ({discipline})"
         summary = summary[:80]
         return CalendarEvent(
             start=start,
             end=end,
             summary=summary,
-            description=toelichting[:500] if toelichting else None,
+            description=beschrijving[:500] if beschrijving else f"Zorgmoment door {wie}",
         )
 
     def _zorgmomenten(self) -> list[dict]:
