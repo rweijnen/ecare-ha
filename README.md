@@ -8,7 +8,8 @@ Home Assistant integratie die het eCare zorgdossier (Puur van Jou / wijkzorg) mo
 Vuurt een HA event bij nieuwe dagboek-items, toont komende zorgbezoeken in de kalender
 en houdt metingen bij.
 
-> **Let op:** Ik heb zelf alleen toegng tot het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`) en dus alleen daarmee getest.
+> **Let op:** Ik heb zelf alleen toegang tot het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`) en dus alleen daarmee getest.
+> Andere eCare-portalen zouden kunnen werken maar zijn niet geverifieerd.
 > De API is niet officieel gedocumenteerd en kan zonder aankondiging wijzigen.
 
 ## Getest met
@@ -62,7 +63,7 @@ Als de sessie verloopt, vraagt HA je opnieuw te configureren via **Instellingen 
 | `sensor.ecare_dagboek_items` | Totaal aantal items in het dagboek |
 | `sensor.ecare_laatste_gebeurtenis` | Meest recente dagboek-item (type, wie, tekst) |
 | `sensor.ecare_eerstvolgende_bezoek` | Eerstvolgende geplande zorgbezoek (datum, tijd, zorgverlener) |
-| `sensor.ecare_client` | Naam en geboortedatum van de cliënt |
+| `sensor.ecare_client` | Naam, geboortedatum, avatar, telefoon, email en adres van de cliënt |
 | `sensor.ecare_gewicht` | Laatste gewichtsmeting |
 | `sensor.ecare_bloeddruk` | Laatste bloeddruk (systolisch/diastolisch) |
 | `sensor.ecare_hartslag` | Laatste hartslagmeting |
@@ -74,11 +75,24 @@ Als de sessie verloopt, vraagt HA je opnieuw te configureren via **Instellingen 
 
 | Entity | Beschrijving |
 |--------|-------------|
-| `calendar.ecare_planning` | Komende zorgbezoeken zichtbaar in de HA kalender |
+| `calendar.ecare_planning` | Zorgbezoeken (komende + opgeslagen historie) |
+| `calendar.ecare_zorgmomenten` | Dagboek zorgmomenten als kalender events |
 
-De kalender toont bezoeken uit de planning. Verlopen bezoeken (meer dan 2 uur na het geplande
-tijdstip) worden automatisch verborgen. Tijden zijn bij benadering — zorgverleners kunnen
-vroeger of later komen.
+De planning-kalender toont komende bezoeken met tijdvenster (bijv. 16:05 - 16:25).
+Verlopen bezoeken worden opgeslagen zodat je in de kalender kunt terugkijken.
+Tijden zijn bij benadering — zorgverleners kunnen vroeger of later komen.
+
+De zorgmomenten-kalender toont dagboek entries van type `zorgmoment`. Klik op een
+event om de volledige tekst te zien (onderwerp, toelichting, zorgbeschrijving).
+
+Beide kalenders kunnen samen in één calendar card getoond worden, elk met een eigen kleur:
+
+```yaml
+type: calendar
+entities:
+  - entity: calendar.ecare_planning
+  - entity: calendar.ecare_zorgmomenten
+```
 
 ## Events
 
@@ -140,10 +154,10 @@ Ga naar **Instellingen → Integraties → eCare → Configureren** (standaard: 
 
 ## Bekende beperkingen
 
-- Werkt alleen voor het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`)
-- Andere eCare-portalen zijn niet getest
+- Alleen getest met het **Puur van Jou** portaal (`wijkzorg.puurvanjou.nl`) — andere eCare-portalen zijn niet geverifieerd
 - De API is niet officieel gedocumenteerd en kan wijzigen
 - Sessie verloopt na verloop van tijd — opnieuw configureren met SMS vereist
+- Planning-historie wordt lokaal opgebouwd vanaf het moment van installatie — eerdere bezoeken zijn niet beschikbaar
 
 ## Technische details
 
