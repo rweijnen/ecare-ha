@@ -1,0 +1,23 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create zip asset
+        run: |
+          cd custom_components/ecare
+          zip -r ../../ecare.zip . -x '__pycache__/*' '*.pyc'
+
+      - name: Upload zip to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" ecare.zip --clobber
