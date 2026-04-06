@@ -129,37 +129,75 @@ views:
                 {% endif %}
               </div>
 
-          - type: custom:html-template-card
-            ignore_line_breaks: true
-            content: |
-              {% set g = states('sensor.ecare_gewicht') %}
-              {% set bp = states('sensor.ecare_bloeddruk') %}
-              {% set hr = states('sensor.ecare_hartslag') %}
-              {% set t = states('sensor.ecare_temperatuur') %}
-              {% set gl = states('sensor.ecare_glucose') %}
-              {% set p = states('sensor.ecare_pijnscore') %}
-              {% set na = ['unknown', 'unavailable'] %}
-              {% set metingen = [] %}
-              {% if g not in na %}{% set metingen = metingen + [('mdi:scale-bathroom', 'Gewicht', g, 'kg')] %}{% endif %}
-              {% if bp not in na %}{% set metingen = metingen + [('mdi:heart-pulse', 'Bloeddruk', bp, 'mmHg')] %}{% endif %}
-              {% if hr not in na %}{% set metingen = metingen + [('mdi:heart', 'Hartslag', hr, 'bpm')] %}{% endif %}
-              {% if t not in na %}{% set metingen = metingen + [('mdi:thermometer', 'Temperatuur', t, '°C')] %}{% endif %}
-              {% if gl not in na %}{% set metingen = metingen + [('mdi:diabetes', 'Glucose', gl, 'mmol/L')] %}{% endif %}
-              {% if p not in na %}{% set metingen = metingen + [('mdi:emoticon-sad-outline', 'Pijnscore', p, '/ 10')] %}{% endif %}
-              <div style="padding: 0 0 8px 0;">
-                <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--divider-color); margin-bottom: 4px;">
-                  <ha-icon icon="mdi:clipboard-pulse" style="--mdc-icon-size: 24px; color: var(--primary-color);"></ha-icon>
-                  <span style="font-size: 1.2em; font-weight: 600;">Laatste metingen</span>
-                </div>
-                {% if metingen | length > 0 %}
-                {% for icon, label, waarde, eenheid in metingen %}
-                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;{% if not loop.last %} border-bottom: 1px solid var(--divider-color);{% endif %}">
-                  <ha-icon icon="{{ icon }}" style="--mdc-icon-size: 20px; color: var(--secondary-text-color);"></ha-icon>
-                  <span style="flex: 1; color: var(--secondary-text-color);">{{ label }}</span>
-                  <span style="font-weight: 600;">{{ waarde }} {{ eenheid }}</span>
-                </div>
-                {% endfor %}
-                {% else %}
-                <div style="padding: 12px 0; color: var(--secondary-text-color); font-style: italic;">Geen meetgegevens beschikbaar.</div>
-                {% endif %}
-              </div>
+          - type: markdown
+            title: Laatste metingen
+            content: " "
+            card_mod:
+              style: |
+                ha-card .card-content { display: none; }
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.ecare_gewicht
+                state_not: unknown
+            card:
+              type: tile
+              entity: sensor.ecare_gewicht
+              name: Gewicht
+              icon: mdi:scale-bathroom
+              color: teal
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.ecare_bloeddruk
+                state_not: unknown
+            card:
+              type: tile
+              entity: sensor.ecare_bloeddruk
+              name: Bloeddruk
+              icon: mdi:heart-pulse
+              color: red
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.ecare_hartslag
+                state_not: unknown
+            card:
+              type: tile
+              entity: sensor.ecare_hartslag
+              name: Hartslag
+              icon: mdi:heart
+              color: pink
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.ecare_temperatuur
+                state_not: unknown
+            card:
+              type: tile
+              entity: sensor.ecare_temperatuur
+              name: Temperatuur
+              icon: mdi:thermometer
+              color: orange
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.ecare_glucose
+                state_not: unknown
+            card:
+              type: tile
+              entity: sensor.ecare_glucose
+              name: Glucose
+              icon: mdi:diabetes
+              color: blue
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.ecare_pijnscore
+                state_not: unknown
+            card:
+              type: tile
+              entity: sensor.ecare_pijnscore
+              name: Pijnscore
+              icon: mdi:emoticon-sad-outline
+              color: amber
