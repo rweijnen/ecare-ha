@@ -83,7 +83,7 @@ class EcareDagboekSensor(_EcareBase):
                 "kleur":      e.get("Color", "#7f8c8d"),
                 "discipline": e.get("AlsDiscipline") or e.get("AangemaaktDoorDiscipline") or "",
                 "onderwerp":  e.get("Onderwerp") or (acties[0].get("Probleemgebied") if acties else "") or "",
-                "tekst":      _strip_html(tekst)[:500],
+                "tekst":      _strip_html(tekst),
             })
         return {
             "laatste_datum":   latest.get("Datum", {}).get("tekst", ""),
