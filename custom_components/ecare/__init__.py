@@ -143,7 +143,7 @@ class EcareCoordinator(DataUpdateCoordinator):
                         "tekst":     _strip_html(
                             event.get("Toelichting") or
                             " | ".join(a.get("Zorgbeschrijving", "") for a in acties if a.get("Zorgbeschrijving"))
-                        )[:500],
+                        ),
                     },
                 )
 

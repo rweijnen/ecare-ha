@@ -174,7 +174,7 @@ class EcareZorgmomentenCalendar(CoordinatorEntity[EcareCoordinator], CalendarEnt
             start=start,
             end=end,
             summary=summary,
-            description=beschrijving[:500] if beschrijving else f"Zorgmoment door {wie}",
+            description=beschrijving if beschrijving else f"Zorgmoment door {wie}",
         )
 
     def _zorgmomenten(self) -> list[dict]:
