@@ -62,10 +62,12 @@ views:
             .ecare-expand { display: none; }
             .ecare-expand:checked ~ .ecare-teaser { display: none; }
             .ecare-expand:checked ~ .ecare-full { display: block; }
-            .ecare-expand:checked ~ .ecare-more { display: none; }
             .ecare-full { display: none; }
-            .ecare-tekst { margin-top: 4px; color: var(--secondary-text-color); line-height: 1.45; font-size: 0.92em; white-space: pre-wrap; }
-            .ecare-more { color: var(--primary-color); font-weight: 500; cursor: pointer; }
+            .ecare-tekst { margin-top: 4px; color: var(--secondary-text-color); line-height: 1.45; font-size: 0.92em; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
+            .ecare-entry { position: relative; user-select: text; -webkit-user-select: text; }
+            .ecare-toggle { color: var(--primary-color); font-weight: 500; cursor: pointer; user-select: none; }
+            .ecare-copy { position: absolute; top: 0; right: 0; cursor: pointer; color: var(--secondary-text-color); padding: 4px; border-radius: 4px; user-select: none; }
+            .ecare-copy:hover { color: var(--primary-color); background: var(--divider-color); }
           </style>
           <div style="padding: 0 0 8px 0;">
             <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--divider-color); margin-bottom: 4px;">
@@ -83,8 +85,12 @@ views:
             {% set kleur = item.get('kleur', '#7f8c8d') %}
             {% set badge_kleuren = {'Verpleging':'#3498db','Mantelzorger':'#27ae60','Ergotherapeut':'#e67e22','Fysiotherapeut':'#9b59b6'} %}
             {% set badge_kleur = badge_kleuren.get(item.get('discipline',''), '#7f8c8d') %}
-            <div style="display: flex; gap: 14px; padding: 14px 0;{% if not loop.last %} border-bottom: 1px solid var(--divider-color);{% endif %}">
-              <div style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: {{ kleur }}; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15em; font-weight: 600; margin-top: 2px;">{{ initiaal }}</div>
+            <div class="ecare-entry" style="display: flex; gap: 14px; padding: 14px 28px 14px 0;{% if not loop.last %} border-bottom: 1px solid var(--divider-color);{% endif %}">
+              <div style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; background: {{ kleur }}; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15em; font-weight: 600; margin-top: 2px; user-select: none;">{{ initiaal }}</div>
+              {% if tekst %}
+              <span class="ecare-copy" title="Kopieer naar klembord" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ecare-copy-source').textContent); this.innerHTML='&#10003;'; setTimeout(()=>this.innerHTML='&#128203;', 1500);">&#128203;</span>
+              <span class="ecare-copy-source" style="display: none;">{{ tekst }}</span>
+              {% endif %}
               <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px;">
                   <span style="font-weight: 600; color: #3a9bb5; font-size: 1.05em;">{{ wie }}</span>
@@ -96,8 +102,8 @@ views:
                 {% if tekst %}
                 {% if tekst | length > 300 %}
                 <input type="checkbox" id="ecare-exp-{{ loop.index }}" class="ecare-expand">
-                <div class="ecare-tekst ecare-teaser">{{ tekst[:300] }}<label for="ecare-exp-{{ loop.index }}" class="ecare-more">... meer</label></div>
-                <div class="ecare-tekst ecare-full">{{ tekst }}</div>
+                <div class="ecare-tekst ecare-teaser">{{ tekst[:300] }} <label for="ecare-exp-{{ loop.index }}" class="ecare-toggle">... meer</label></div>
+                <div class="ecare-tekst ecare-full">{{ tekst }} <label for="ecare-exp-{{ loop.index }}" class="ecare-toggle">minder</label></div>
                 {% else %}
                 <div class="ecare-tekst">{{ tekst }}</div>
                 {% endif %}
