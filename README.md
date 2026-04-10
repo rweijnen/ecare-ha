@@ -145,7 +145,7 @@ action:
         {{ trigger.event.data.type }}
         {% if trigger.event.data.onderwerp %}{{ trigger.event.data.onderwerp }}
         {% endif %}
-        {{ trigger.event.data.tekst[:400] }}
+        {{ trigger.event.data.tekst }}
 ```
 
 ## Poll interval aanpassen
